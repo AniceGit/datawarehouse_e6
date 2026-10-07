@@ -2,7 +2,7 @@
   "uid": "entrepot-supervision",
   "title": "Supervision entrepot VenteRapide",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "refresh": "15s",
   "time": { "from": "now-1h", "to": "now" },
   "panels": [
@@ -60,6 +60,63 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [ { "expr": "node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"} * 100", "refId": "A" } ],
       "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100 } }
+    },
+    {
+      "type": "stat",
+      "title": "Dernier build dbt",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "expr": "dbt_build_success", "refId": "A" } ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "OK", "color": "green" }, "0": { "text": "ECHEC", "color": "red" } } }
+          ],
+          "color": { "mode": "thresholds" },
+          "thresholds": { "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }
+        }
+      }
+    },
+    {
+      "type": "gauge",
+      "title": "Tests dbt au vert (%)",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "expr": "dbt_tests_passed / dbt_tests_total * 100", "refId": "A" } ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "min": 0, "max": 100,
+          "thresholds": { "steps": [ { "color": "red", "value": null }, { "color": "orange", "value": 90 }, { "color": "green", "value": 100 } ] }
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Fraicheur des donnees (h depuis le dernier build)",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "expr": "(time() - dbt_build_timestamp_seconds) / 3600", "refId": "A" } ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "h", "decimals": 1,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 24 }, { "color": "red", "value": 48 } ] }
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Age derniere sauvegarde complete (h)",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "expr": "(time() - backup_full_last_success_timestamp_seconds) / 3600", "refId": "A" } ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "h", "decimals": 1,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 24 }, { "color": "red", "value": 48 } ] }
+        }
+      }
     }
   ]
 }

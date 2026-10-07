@@ -12,8 +12,10 @@ services:
     restart: unless-stopped
     command:
       - '--path.rootfs=/host'
+      - '--collector.textfile.directory=/metrics'   # lit les .prom ecrits par nos scripts
     volumes:
       - '/:/host:ro,rslave'
+      - './metrics:/metrics:ro'                      # dossier des mesures dbt et sauvegardes
 
   # Mesures de PostgreSQL : taille de la base, connexions, transactions.
   postgres-exporter:
