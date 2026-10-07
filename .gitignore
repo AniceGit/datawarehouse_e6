@@ -28,3 +28,6 @@ captures/
 
 # Sauvegardes de la base (ne jamais versionner un dump)
 backups/
+
+# Supervision : le .env contient les mots de passe (base, Grafana)
+supervision/.env
