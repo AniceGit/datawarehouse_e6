@@ -1,0 +1,78 @@
+/* Feuille de style — Rapport professionnel E6 (rendu PDF A4 via Chrome) */
+:root{
+  --ink:#1F2933; --muted:#5A6b7a; --rule:#D3DBE3; --soft:#F4F7F9;
+  --accent:#0E7C86; --accent-dark:#0A5751; --slate:#334155;
+}
+@page{ size:A4; margin:15mm 15mm 14mm 15mm; }
+#title-block-header{ display:none; }  /* titre pandoc auto masqué : la couverture le remplace */
+*{ box-sizing:border-box; }
+html{ font-size:10pt; }
+body{
+  font-family:"DejaVu Sans","Liberation Sans",Helvetica,Arial,sans-serif;
+  color:var(--ink); line-height:1.3; margin:0;
+}
+h1,h2,h3,h4{ font-family:"DejaVu Sans","Liberation Sans",Helvetica,Arial,sans-serif; line-height:1.2; }
+
+/* ----- page de couverture ----- */
+.cover{ height:238mm; display:flex; flex-direction:column; justify-content:center;
+  page-break-after:always; }
+.cover .bar{ width:70mm; height:5px; background:var(--accent); margin-bottom:14mm; }
+.cover .kicker{ font-size:11pt; letter-spacing:.18em; text-transform:uppercase; color:var(--accent-dark); font-weight:700; }
+.cover h1{ font-size:30pt; margin:6mm 0 3mm; color:var(--ink); letter-spacing:-.01em; }
+.cover .subtitle{ font-size:14pt; color:var(--muted); font-weight:600; margin-bottom:16mm; }
+.cover .meta{ font-size:10.5pt; color:var(--ink); border-top:1px solid var(--rule); padding-top:6mm; }
+.cover .meta b{ color:var(--accent-dark); display:inline-block; width:32mm; }
+.cover .foot{ margin-top:auto; font-size:9pt; color:var(--muted); }
+
+/* ----- titres de section ----- */
+h1{ font-size:14pt; color:var(--accent-dark); margin:3.5mm 0 1.8mm;
+  padding-bottom:1.3mm; border-bottom:2px solid var(--accent); page-break-after:avoid; }
+h2,h3{ page-break-after:avoid; }
+.schema{ page-break-inside:avoid; }
+#annexes{ page-break-before:always; }
+
+/* ----- sommaire ----- */
+.toc{ page-break-after:always; padding-top:6mm; }
+.toc > p:first-child{ font-size:15pt; font-weight:700; color:var(--accent-dark);
+  border-bottom:2px solid var(--accent); padding-bottom:2mm; margin:0 0 5mm; }
+.toc ol{ font-size:11.5pt; line-height:2.1; padding-left:11mm; margin-left:2mm; }
+.toc a{ text-decoration:none; color:var(--ink); }
+.toc a:hover{ color:var(--accent-dark); }
+.toc > p:last-child{ margin-top:4mm; font-size:11.5pt; }
+.toc > p:last-child a{ font-weight:700; color:var(--accent-dark); text-decoration:none; }
+h2{ font-size:11pt; color:var(--slate); margin:2.5mm 0 1mm; }
+h3{ font-size:10.5pt; color:var(--ink); margin:2mm 0 1mm; }
+p{ margin:0 0 1.4mm; text-align:justify; }
+ul,ol{ margin:0 0 3mm; padding-left:6mm; }
+li{ margin:0 0 1mm; }
+strong{ color:var(--ink); }
+a{ color:var(--accent-dark); text-decoration:none; }
+
+/* ----- tableaux ----- */
+table{ border-collapse:collapse; width:100%; margin:3mm 0 4mm; font-size:9.3pt; }
+th,td{ border:1px solid var(--rule); padding:2mm 2.5mm; text-align:left; vertical-align:top; }
+thead th{ background:var(--accent); color:#fff; font-weight:700; border-color:var(--accent); }
+tbody tr:nth-child(even){ background:var(--soft); }
+
+/* ----- code ----- */
+code{ font-family:"DejaVu Sans Mono","Liberation Mono",monospace; font-size:8.8pt;
+  background:var(--soft); padding:0 1mm; border-radius:2px; color:var(--accent-dark); }
+pre{ background:#0f2b30; color:#e6f2f1; padding:3mm 4mm; border-radius:3px; overflow-x:auto;
+  font-size:8.6pt; line-height:1.45; margin:2mm 0 4mm; }
+pre code{ background:none; color:inherit; padding:0; }
+
+/* ----- figures / captures ----- */
+img{ max-width:100%; height:auto; display:block; margin:1.5mm auto; border:1px solid var(--rule); border-radius:3px; }
+figure{ margin:2mm 0 3mm; page-break-inside:avoid; }
+figcaption{ font-size:8.6pt; color:var(--muted); font-style:italic; text-align:center; margin-top:1mm; }
+.schema img{ border:none; max-height:88mm; }
+/* annexes : hauteur cadrée pour un remplissage régulier des pages, tout en restant lisible */
+#annexes figure img{ max-height:82mm; width:auto; margin:0 auto; }
+
+/* ----- encadrés ----- */
+.note{ border-left:3px solid var(--accent); background:var(--soft); padding:2.5mm 3.5mm;
+  margin:3mm 0; font-size:9.5pt; }
+.note b{ color:var(--accent-dark); }
+
+hr{ border:none; border-top:1px solid var(--rule); margin:5mm 0; }
+blockquote{ margin:3mm 0; padding:1mm 4mm; border-left:3px solid var(--rule); color:var(--muted); font-style:italic; }

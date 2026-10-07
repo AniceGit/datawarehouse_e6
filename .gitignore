@@ -1,0 +1,30 @@
+
+
+# dbt
+target/
+dbt_packages/
+logs/
+.dbt/
+
+# Python
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+
+# Backup
+*.dump
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IA
+.claude
+
+# Captures d'écran (préparation du rapport, non versionnées)
+captures/
+
+# Sauvegardes de la base (ne jamais versionner un dump)
+backups/
