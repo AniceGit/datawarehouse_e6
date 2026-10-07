@@ -20,7 +20,7 @@
 3. [Intégrer une nouvelle source de données](#s3)
 4. [Gérer les variations de dimensions (SCD)](#s4)
 5. [Organiser la maintenance](#s5)
-6. [Journaliser l'activité et alerter](#s6)
+6. [Superviser l'activité, journaux et tableau de bord](#s6)
 7. [Sauvegarder et restaurer](#s7)
 8. [Gérer les accès et respecter le RGPD](#s8)
 9. [Documenter et préparer la montée en charge](#s9)
@@ -62,7 +62,7 @@ La première couche est constituée des seeds. Ce sont les fichiers CSV bruts, c
 
 ## Remettre l'environnement en route
 
-Avant toute intervention, j'ai vérifié que l'entrepôt fonctionnait réellement en installant PostgreSQL et dbt puis en lançant la construction complète du projet avec la commande `dbt build`, qui enchaîne le chargement des seeds, la construction des modèles, le snapshot et l'exécution des tests. La base tournant en parallèle d'un autre service sur le port habituel, l'instance du projet a simplement été configurée sur un autre port, ce qui a suffi à établir la connexion. La construction s'est ensuite déroulée sans erreur et l'ensemble des tests est passé au vert, ce qui me donnait un point de départ sain avant de faire évoluer quoi que ce soit. La preuve de cette mise en route figure en [annexe A](#annexe-a).
+Avant toute intervention, j'ai vérifié que l'entrepôt fonctionnait réellement en installant PostgreSQL et dbt puis en lançant la construction complète du projet avec la commande `dbt build`, qui enchaîne le chargement des seeds, la construction des modèles, le snapshot et l'exécution des tests. La base cohabitant avec un autre service sur le port habituel, l'instance du projet a simplement été placée sur un autre port. La construction s'est ensuite déroulée sans erreur et l'ensemble des tests est passé au vert, ce qui me donnait un point de départ sain avant de faire évoluer quoi que ce soit. La preuve de cette mise en route figure en [annexe A](#annexe-a).
 
 # 3. Intégrer une nouvelle source de données {#s3}
 
@@ -137,7 +137,7 @@ Chaque type de tâche est confié à un rôle précis. Le data engineer prend en
 
 ## Les indicateurs de service et leur intérêt
 
-Prendre un ticket en charge rapidement ne suffit pas, encore faut-il mesurer la qualité réelle du service rendu. C'est le rôle des indicateurs de service, chacun associé à une cible que l'on s'engage à tenir, ce que l'on appelle un accord de niveau de service ou SLA. Ces indicateurs mesurent la résolution complète et la santé générale de l'entrepôt, et non plus seulement le démarrage du traitement. Par exemple, le délai moyen de résolution d'un incident critique est plus long que son délai de prise en charge, puisqu'il couvre le diagnostic et la correction. Regroupés dans un tableau de bord, ces indicateurs permettent au responsable de voir d'un seul coup d'œil si les engagements sont tenus et de repérer immédiatement toute dérive.
+Prendre un ticket en charge rapidement ne suffit pas, encore faut-il mesurer la qualité réelle du service rendu. C'est le rôle des indicateurs de service, chacun associé à une cible que l'on s'engage à tenir, ce que l'on appelle un accord de niveau de service ou SLA. Ces indicateurs mesurent la résolution complète et la santé générale de l'entrepôt, et non plus seulement le démarrage du traitement. Par exemple, le délai moyen de résolution d'un incident critique est plus long que son délai de prise en charge, puisqu'il couvre le diagnostic et la correction.
 
 | Indicateur | Cible visée | Valeur d'exemple | État |
 |---|---|---|---|
@@ -148,15 +148,15 @@ Prendre un ticket en charge rapidement ne suffit pas, encore faut-il mesurer la 
 | Taux de réussite des sauvegardes sur sept jours | 100 % | 100 % | conforme |
 | Tests dbt au vert | 100 % | 87 sur 87 | conforme |
 
-En production, ce tableau de bord serait alimenté automatiquement à partir des journaux de la base, du fichier de résultats produit par dbt et de l'outil de ticketing, à l'aide d'un outil de visualisation comme Grafana ou Metabase.
+Ce tableau de bord est alimenté automatiquement à partir des journaux de la base, du fichier de résultats produit par dbt et des mesures de la machine, à l'aide de l'outil de visualisation Grafana. Sa mise en place concrète fait l'objet de la partie suivante.
 
-# 6. Journaliser l'activité et alerter {#s6}
+# 6. Superviser l'activité, journaux et tableau de bord {#s6}
 
-Surveiller l'entrepôt revient à répondre à deux questions. La première est de savoir ce qui s'est passé, ce qui suppose de conserver des journaux. La seconde est de savoir comment être prévenu quand quelque chose se casse, ce qui suppose une alerte active. J'ai traité ces deux besoins à deux endroits, la base de données et le pipeline dbt.
+Superviser l'entrepôt revient à répondre à trois questions. Que s'est-il passé, comment être prévenu quand quelque chose se casse, et comment garder son état sous les yeux en permanence. J'ai répondu sur deux niveaux complémentaires et hiérarchisés. Le premier est réactif et détaillé, il repose sur les journaux et sur une alerte par courriel, et sert à comprendre un incident une fois qu'il survient. Le second est proactif et visuel, il repose sur des mesures affichées dans un tableau de bord, et sert à surveiller les tendances pour réagir avant la panne. Les deux ne se remplacent pas, ils se complètent, et le second se nourrit même du premier.
 
-## La journalisation de PostgreSQL
+## Le niveau réactif, journaux et alerte
 
-PostgreSQL classe chaque événement selon un niveau de gravité, du plus bavard au plus grave. Pour catégoriser au minimum les alertes et les erreurs, j'ai ajouté un petit fichier de configuration, inclus automatiquement par la base, contenant les réglages suivants.
+PostgreSQL classe chaque événement selon un niveau de gravité, du plus bavard au plus grave. Pour conserver au minimum les alertes et les erreurs, j'ai ajouté un petit fichier de configuration, inclus automatiquement par la base, contenant les réglages suivants.
 
 ```conf
 log_min_messages = warning        # journalise les alertes (WARNING) et au dessus
@@ -164,23 +164,26 @@ log_min_error_statement = error   # ajoute la requête responsable de chaque err
 log_connections = on              # trace les connexions à la base
 ```
 
-J'ai ensuite appliqué ces réglages par un simple rechargement à chaud, sans redémarrer la base, ce qui évite toute coupure de service.
+Ces réglages s'appliquent par un simple rechargement à chaud, sans redémarrer la base ni couper le service. Chaque ligne du journal porte alors son niveau de gravité, ce qui permet de retrouver les alertes et les erreurs d'un simple filtre.
 
 ```bash
 sudo systemctl reload postgresql@16-main
-```
-
-À partir de là, chaque ligne du journal porte son niveau de gravité, ce qui permet de retrouver très simplement les alertes et les erreurs en filtrant le fichier de journal.
-
-```bash
 grep -E "WARNING:|ERROR:" /var/log/postgresql/postgresql-16-main.log
 ```
 
-Pour vérifier le bon fonctionnement, j'ai provoqué volontairement une alerte puis une erreur, et je les ai retrouvées dans le journal, correctement catégorisées et accompagnées de la requête fautive, comme le montre l'[annexe E](#annexe-e).
+Pour vérifier le dispositif, j'ai provoqué volontairement une alerte puis une erreur, et je les ai retrouvées dans le journal, correctement catégorisées et accompagnées de la requête fautive, comme le montre l'[annexe E](#annexe-e).
 
-## Le monitoring de dbt et l'alerte par courriel
+Il fallait aussi être prévenu quand la reconstruction de l'entrepôt échoue. Un script lance la construction dbt et examine son code de sortie, le nombre que renvoie tout programme pour dire s'il a réussi. Un code de zéro laisse le script silencieux. Un code différent déclenche un courriel contenant les dernières lignes du journal, pour comprendre tout de suite l'origine du problème. L'envoi passe par un utilitaire de messagerie dont les identifiants restent dans un fichier protégé, jamais écrits dans le script. Testé sur un échec réel de la construction, le dispositif a bien déclenché la réception du courriel, visible en [annexe E](#annexe-e).
 
-La journalisation de la base décrit ce qui se passe dans la base. Il fallait aussi surveiller la reconstruction de l'entrepôt et être prévenu en cas d'échec. J'ai écrit pour cela un script qui lance la construction dbt et examine son code de sortie, c'est-à-dire le nombre que renvoie tout programme pour indiquer s'il a réussi. Un code de zéro signifie que tout s'est bien passé et le script reste silencieux. Un code différent de zéro signifie un échec et déclenche alors l'envoi d'un courriel d'alerte contenant les dernières lignes du journal, afin de comprendre immédiatement l'origine du problème. L'envoi passe par un service de messagerie classique à l'aide d'un utilitaire dédié, dont les identifiants sont rangés dans un fichier protégé et jamais écrits dans le script. J'ai testé le dispositif en provoquant un échec réel de la construction, ce qui a bien déclenché la réception du courriel, visible en [annexe E](#annexe-e).
+## Le niveau proactif, métriques et tableau de bord
+
+Les journaux et l'alerte répondent après coup, une fois l'incident survenu. Ils ne donnent pas l'état de l'entrepôt d'un seul coup d'œil, ni l'évolution de ses indicateurs dans le temps, ni le moyen de réagir avant la rupture. C'est le rôle d'un second niveau, que j'ai monté avec Prometheus et Grafana, les deux outils annoncés dans la partie 5 pour alimenter le tableau de bord de service.
+
+Le principe tient en trois rôles. Des exporteurs exposent des mesures sur une page web, l'un pour la machine et l'autre pour PostgreSQL. Prometheus vient lire ces pages à intervalle régulier et conserve l'historique des mesures. Grafana interroge Prometheus et affiche le tout. L'ensemble est décrit dans un fichier docker compose et démarre d'une seule commande.
+
+Restait à y faire entrer nos propres indicateurs, le résultat du build dbt et la date des sauvegardes, qui ne sont connus que de nos scripts. Plutôt que de refaire ce travail, je l'ai raccordé au niveau réactif. Les scripts de construction et de sauvegarde écrivent désormais, en plus de leur journal, un petit fichier de mesures que l'exporteur de la machine republie vers Prometheus. Le même script qui envoie l'alerte en cas d'échec alimente ainsi le tableau de bord, ce qui montre bien la hiérarchie entre les deux niveaux, le réactif produit le détail et l'alerte, le proactif en tire une vue d'ensemble.
+
+Le tableau de bord réunit alors sur une seule vue les indicateurs de service de la partie 5, l'état de la base et de la machine, le succès du dernier build dbt, la fraîcheur des données et l'âge de la dernière sauvegarde. Chaque mesure change de couleur selon des seuils, ce qui fait ressortir une dérive avant qu'elle ne devienne une panne. Le tableau de bord est présenté en [annexe G](#annexe-g).
 
 # 7. Sauvegarder et restaurer {#s7}
 
@@ -188,7 +191,7 @@ Un entrepôt en production doit pouvoir être restauré en cas d'incident, qu'il
 
 ## La stratégie de sauvegarde
 
-J'ai mis en place une sauvegarde logique à l'aide de l'outil `pg_dump`, qui produit un fichier contenant à la fois la structure des tables et l'intégralité des données. Ce point est important à comprendre, car en ouvrant le fichier on y voit surtout des ordres de création de tables, mais les données sont bien présentes juste après, sous forme de lignes à recharger. Perdre la base ne perd donc rien tant que l'on possède ce fichier.
+J'ai mis en place une sauvegarde logique à l'aide de l'outil `pg_dump`, qui produit un fichier contenant à la fois la structure des tables et l'intégralité des données. Perdre la base ne perd donc rien tant que l'on possède ce fichier.
 
 ```bash
 pg_dump -Fc -f dw_full_$(date +%F).dump datawarehouse_e6
@@ -242,9 +245,9 @@ J'ai enfin rédigé une procédure d'anonymisation des clients inactifs. Le crit
 
 La documentation prépare l'avenir de l'entrepôt. J'ai produit un ensemble de procédures organisées par cas d'usage, afin qu'un tiers puisse comprendre et reproduire chaque opération courante. Elles couvrent la création d'un accès dans le fichier `procedure_ajout_acces.md`, l'augmentation de l'espace de stockage et de la capacité de calcul dans `procedure_stockage.md`, et l'ajout d'un nouveau datamart dans `procedure_datamart.md`. Le volet conformité est détaillé dans `rgpd_registre_et_purge.md`, et l'organisation de la maintenance dans `organisation_maintenance.md`.
 
-Le terme datamart mérite une explication. Il s'agit d'un sous-ensemble thématique de l'entrepôt, dédié à une équipe précise comme le marketing, qui expose des tables déjà agrégées et prêtes à l'emploi. Il se construit au-dessus des faits et des dimensions existants et réutilise le schéma en étoile sans jamais le dupliquer. Concernant le stockage, la démarche documentée consiste à surveiller la taille de la base, puis à agir selon le cas, soit par un nettoyage, soit par une extension du disque, soit par l'ajout d'un espace de stockage dédié.
+Le terme datamart mérite une explication. Il s'agit d'un sous-ensemble thématique de l'entrepôt, dédié à une équipe précise comme le marketing, qui expose des tables déjà agrégées et prêtes à l'emploi. Il se construit au-dessus des faits et des dimensions existants et réutilise le schéma en étoile sans le dupliquer. Pour le stockage, la démarche documentée consiste à surveiller la taille de la base puis à agir selon le cas, par un nettoyage, une extension du disque ou l'ajout d'un espace de stockage dédié.
 
-J'ai par ailleurs mis à jour la documentation technique générée par dbt pour les nouveaux modèles, puis régénéré le graphe de lignage. Ce graphe montre visuellement les dépendances entre les modèles et confirme que la nouvelle source des retours est bien reliée à l'entrepôt, depuis le fichier brut jusqu'à la table de faits. Il est présenté en [annexe B](#annexe-b).
+J'ai par ailleurs mis à jour la documentation technique générée par dbt, puis régénéré le graphe de lignage. Ce graphe montre les dépendances entre les modèles et confirme que la nouvelle source des retours est bien reliée à l'entrepôt, du fichier brut jusqu'à la table de faits. Il est présenté en [annexe B](#annexe-b).
 
 # 10. Les modèles logique et physique {#s10}
 
@@ -260,15 +263,15 @@ On y lit clairement la logique en étoile. Les faits `fact_commandes`, `fact_vis
 
 Le dispositif décrit jusqu'ici fonctionne en local, sur une seule machine. En production, la logique resterait identique, seuls les outils deviendraient plus robustes, et il est utile de le décrire.
 
-Tout s'exécuterait sur un serveur distant dans le cloud. La base de données serait un service géré qui assure lui-même la disponibilité et les sauvegardes. Le code serait poussé sur un dépôt en ligne puis empaqueté dans une image exécutable partout. La planification ne reposerait plus sur le cron mais sur un orchestrateur comme Airflow ou dbt Cloud, qui déclencherait les constructions, réessaierait en cas d'échec et émettrait lui-même les notifications. Notre script d'alerte y serait soit remplacé par ces notifications, soit exécuté sur le serveur.
+Tout s'exécuterait sur un serveur distant dans le cloud. La base de données serait un service géré qui assure lui-même la disponibilité et les sauvegardes. Le code serait poussé sur un dépôt en ligne puis empaqueté dans une image exécutable partout. La planification ne reposerait plus sur le cron mais sur un orchestrateur comme Airflow ou dbt Cloud, qui déclencherait les constructions, réessaierait en cas d'échec et émettrait lui-même les notifications.
 
-Le point le plus sensible concernerait les secrets. La règle ne changerait pas, aucun secret dans le dépôt de code. Les mots de passe ne seraient plus posés dans des fichiers sur le disque, comme nos fichiers de configuration locaux, mais rangés dans un gestionnaire de secrets dédié, puis injectés au moment de l'exécution sous forme de variables d'environnement. Le code se contenterait d'y faire référence par un nom, et la vraie valeur n'existerait qu'en mémoire le temps du traitement, avec des accès tracés et renouvelés régulièrement. Ce projet constitue ainsi la version atelier d'une chaîne industrielle, dont le passage en ligne ne modifie pas les principes, mais les outille de façon plus automatisée et plus sûre.
+Le point le plus sensible concernerait les secrets. La règle ne changerait pas, aucun secret dans le dépôt de code. Les mots de passe ne seraient plus posés dans des fichiers sur le disque mais rangés dans un gestionnaire de secrets dédié, puis injectés à l'exécution sous forme de variables d'environnement, référencés par un nom et jamais écrits en clair. Ce projet constitue ainsi la version atelier d'une chaîne industrielle, dont le passage en ligne ne modifie pas les principes mais les outille de façon plus automatisée et plus sûre.
 
 # 12. Conclusion et retour d'expérience {#s12}
 
 L'ensemble des objectifs a été atteint et validé en conditions réelles. L'entrepôt a été compris, enrichi de la source des retours, doté d'une gestion complète des variations de dimensions, puis outillé pour son exploitation quotidienne, sa sécurité, sa conformité au RGPD et sa documentation.
 
-Sur le plan des outils, dbt structure les transformations en couches, les fiabilise par ses tests et gère nativement l'historisation de type 2, tandis que PostgreSQL apporte une journalisation fine et des sauvegardes robustes. Les difficultés rencontrées, comme l'apostrophe qui cassait un test ou la nature de la date de validité dans le snapshot, ont été les plus formatrices, car elles m'ont amené à comprendre le fonctionnement réel des outils plutôt qu'à les contourner. L'entrepôt de VenteRapide est aujourd'hui surveillé, sauvegardé, sécurisé, documenté et prêt à évoluer.
+Sur le plan des outils, dbt structure les transformations en couches, les fiabilise par ses tests et gère nativement l'historisation de type 2, tandis que PostgreSQL apporte une journalisation fine et des sauvegardes robustes. Les difficultés rencontrées, comme l'apostrophe qui cassait un test, ont été les plus formatrices, car elles m'ont amené à comprendre le fonctionnement réel des outils plutôt qu'à les contourner. L'entrepôt de VenteRapide est aujourd'hui surveillé, sauvegardé, sécurisé, documenté et prêt à évoluer.
 
 # Annexes {#annexes}
 
@@ -354,4 +357,11 @@ Les annexes regroupent les captures d'écran qui prouvent les résultats décrit
 <figure>
 <img src="../captures/23_t35_dryrun_purge.png" alt="Essai à blanc de la purge">
 <figcaption>Essai à blanc de l'anonymisation, dix-sept clients inactifs sont identifiés.</figcaption>
+</figure>
+
+## Annexe G. Tableau de bord de supervision {#annexe-g}
+
+<figure>
+<img src="../captures/24_t32_supervision_grafana.png" alt="Tableau de bord Grafana de supervision de l'entrepôt">
+<figcaption>Tableau de bord Grafana, l'état de la base, de la machine, du build dbt et des sauvegardes réunis sur une seule vue, avec code couleur par seuil.</figcaption>
 </figure>

@@ -65,7 +65,7 @@ pre code{ background:none; color:inherit; padding:0; }
 img{ max-width:100%; height:auto; display:block; margin:1.5mm auto; border:1px solid var(--rule); border-radius:3px; }
 figure{ margin:2mm 0 3mm; page-break-inside:avoid; }
 figcaption{ font-size:8.6pt; color:var(--muted); font-style:italic; text-align:center; margin-top:1mm; }
-.schema img{ border:none; max-height:88mm; }
+.schema img{ border:none; max-height:82mm; }
 /* annexes : hauteur cadrée pour un remplissage régulier des pages, tout en restant lisible */
 #annexes figure img{ max-height:82mm; width:auto; margin:0 auto; }
 
