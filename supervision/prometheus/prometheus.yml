@@ -1,0 +1,19 @@
+# Configuration de Prometheus : qui interroger et a quelle frequence.
+global:
+  scrape_interval: 15s          # Prometheus collecte les mesures toutes les 15 secondes.
+
+scrape_configs:
+  # Prometheus se surveille lui-meme.
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Mesures de la machine (processeur, memoire, disque).
+  - job_name: 'node'
+    static_configs:
+      - targets: ['localhost:9100']
+
+  # Mesures de la base PostgreSQL.
+  - job_name: 'postgresql'
+    static_configs:
+      - targets: ['localhost:9187']

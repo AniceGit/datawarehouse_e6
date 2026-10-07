@@ -32,3 +32,17 @@ case "$MODE" in
 esac
 
 echo "OK backup $MODE -> $OUT ($(du -h "$OUT" | cut -f1))"
+
+# --- Mesure pour Prometheus (collecteur de fichiers du node-exporter) ---
+METRICS_DIR="$(dirname "$ROOT")/supervision/metrics"
+if [ -d "$METRICS_DIR" ]; then
+  SIZE=$(stat -c%s "$OUT" 2>/dev/null || echo 0)
+  cat > "$METRICS_DIR/backup_${MODE}.prom" <<EOF
+# HELP backup_${MODE}_last_success_timestamp_seconds date de la derniere sauvegarde ${MODE} reussie (epoch)
+# TYPE backup_${MODE}_last_success_timestamp_seconds gauge
+backup_${MODE}_last_success_timestamp_seconds $(date +%s)
+# HELP backup_${MODE}_last_size_bytes taille de la derniere sauvegarde ${MODE}
+# TYPE backup_${MODE}_last_size_bytes gauge
+backup_${MODE}_last_size_bytes $SIZE
+EOF
+fi

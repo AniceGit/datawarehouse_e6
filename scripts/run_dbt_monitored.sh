@@ -7,10 +7,7 @@ set -uo pipefail   # pas de -e : on veut CAPTURER l'échec de dbt, pas planter l
 PROJ="$(cd "$(dirname "$0")/.." && pwd)"
 DBT="$PROJ/.venv/bin/dbt"
 LOGDIR="$PROJ/logs/monitoring"
-# Destinataire de l'alerte lu depuis une variable d'environnement, aucune adresse en clair dans le script.
-# À définir avant usage, par exemple : export ALERT_EMAIL="vous@exemple.fr"
-ALERT_TO="${ALERT_EMAIL:?Definir la variable ALERT_EMAIL (adresse destinataire des alertes dbt)}"
-FROM="$ALERT_TO"
+METRICS_DIR="$PROJ/supervision/metrics"   # mesures exposees a Prometheus (si la supervision est en place)
 
 mkdir -p "$LOGDIR"
 STAMP="$(date +%F_%H%M%S)"
@@ -20,8 +17,37 @@ cd "$PROJ"
 "$DBT" build > "$RUN_LOG" 2>&1
 CODE=$?
 
+# --- Mesures pour Prometheus (collecteur de fichiers du node-exporter) ---
+if [ -d "$METRICS_DIR" ]; then
+  SUCCESS=0; [ "$CODE" -eq 0 ] && SUCCESS=1
+  TESTS=$("$PROJ/.venv/bin/python" -c "import json
+try:
+    r=json.load(open('$PROJ/target/run_results.json'))['results']
+    t=[x for x in r if x.get('unique_id','').startswith('test.')]
+    print(len(t), sum(1 for x in t if x.get('status')=='pass'))
+except Exception:
+    print(0,0)" 2>/dev/null || echo '0 0')
+  cat > "$METRICS_DIR/dbt.prom" <<EOF
+# HELP dbt_build_success 1 si le dernier dbt build a reussi, 0 sinon
+# TYPE dbt_build_success gauge
+dbt_build_success $SUCCESS
+# HELP dbt_build_timestamp_seconds date du dernier dbt build (epoch)
+# TYPE dbt_build_timestamp_seconds gauge
+dbt_build_timestamp_seconds $(date +%s)
+# HELP dbt_tests_total nombre total de tests dbt
+# TYPE dbt_tests_total gauge
+dbt_tests_total ${TESTS%% *}
+# HELP dbt_tests_passed nombre de tests dbt au vert
+# TYPE dbt_tests_passed gauge
+dbt_tests_passed ${TESTS##* }
+EOF
+fi
+
 if [ "$CODE" -ne 0 ]; then
   # --- ALERTE : le build a échoué ---
+  # Adresse destinataire lue ici seulement, depuis une variable d'environnement.
+  ALERT_TO="${ALERT_EMAIL:?Definir la variable ALERT_EMAIL (adresse destinataire des alertes)}"
+  FROM="$ALERT_TO"
   {
     echo "Subject: [ALERTE dbt] Echec du build - entrepot VenteRapide"
     echo "From: $FROM"

@@ -1,0 +1,51 @@
+# Stack de supervision de l'entrepot : Prometheus + Grafana + exporteurs.
+# Tout tourne en reseau hote (network_mode: host) car PostgreSQL n'ecoute que
+# sur 127.0.0.1 : les conteneurs doivent partager le reseau de l'hote pour l'atteindre.
+# Ports utilises sur l'hote : 9090 (Prometheus), 3000 (Grafana), 9100 (node), 9187 (postgres).
+
+services:
+  # Mesures de la machine : processeur, memoire, espace disque.
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    network_mode: host
+    pid: host
+    restart: unless-stopped
+    command:
+      - '--path.rootfs=/host'
+      - '--collector.textfile.directory=/metrics'   # lit les .prom ecrits par nos scripts
+    volumes:
+      - '/:/host:ro,rslave'
+      - './metrics:/metrics:ro'                      # dossier des mesures dbt et sauvegardes
+
+  # Mesures de PostgreSQL : taille de la base, connexions, transactions.
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: "${PG_EXPORTER_DSN}"
+
+  # Collecte et stocke toutes les mesures a intervalle regulier.
+  prometheus:
+    image: prom/prometheus:v2.53.1
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+
+  # Affiche les mesures dans des tableaux de bord.
+  grafana:
+    image: grafana/grafana:11.1.0
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:-admin}"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+
+volumes:
+  prometheus_data:
+  grafana_data:

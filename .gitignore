@@ -28,3 +28,8 @@ captures/
 
 # Sauvegardes de la base (ne jamais versionner un dump)
 backups/
+
+# Supervision : le .env contient les mots de passe (base, Grafana)
+supervision/.env
+# Supervision : mesures generees par les scripts (lues par node-exporter)
+supervision/metrics/*.prom
