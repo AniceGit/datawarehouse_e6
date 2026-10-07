@@ -1,0 +1,11 @@
+# Charge automatiquement les tableaux de bord presents dans ce dossier.
+apiVersion: 1
+providers:
+  - name: 'Entrepot'
+    orgId: 1
+    folder: ''
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
